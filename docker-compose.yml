@@ -1,0 +1,24 @@
+proxy:
+  image: jwilder/nginx-proxy:0.2.0
+  restart: always
+  ports:
+    - "8000:80"
+  volumes:
+    - "/var/run/docker.sock:/tmp/docker.sock:ro"
+
+app:
+  build: service
+  restart: always
+  ports:
+    - "3000"
+  environment:
+    - VIRTUAL_HOST=localhost
+    - VIRTUAL_PORT=3000
+
+service_a:
+  extends:
+    service: app
+
+service_b:
+  extends:
+    service: app
