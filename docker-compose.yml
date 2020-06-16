@@ -1,24 +1,53 @@
-proxy:
-  image: jwilder/nginx-proxy:0.2.0
-  restart: always
-  ports:
-    - "8000:80"
-  volumes:
-    - "/var/run/docker.sock:/tmp/docker.sock:ro"
-
-app:
-  build: service
+version: "3.7"
+x-base-service: &default-app
+  image: node:14-alpine
   restart: always
   ports:
     - "3000"
   environment:
-    - VIRTUAL_HOST=localhost
+    - VIRTUAL_HOST=proxy
     - VIRTUAL_PORT=3000
+  volumes:
+    - "./service.js:/service.js:ro"
 
-service_a:
-  extends:
-    service: app
+services:
+  # This is a reverse proxy using Jason Wilder's nginx image.  You can read
+  # more about it at his blog:
+  #
+  # http://jasonwilder.com/blog/2014/03/25/automated-nginx-reverse-proxy-for-docker/
+  proxy:
+    image: jwilder/nginx-proxy:0.4.0
+    restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
 
-service_b:
-  extends:
-    service: app
+  # One version of a service
+  service_a:
+    <<: *default-app
+    command: |
+      node /service.js Service-A
+
+  # A second instance to emulate an updated version of the service.  This is
+  # just a copy of the first version to keep it simple.
+  service_b:
+    <<: *default-app
+    command: |
+      node /service.js Service-B
+
+  # This simulates multiple client requests coming in continuously to the proxy.
+  # Apache ab (http://httpd.apache.org/docs/current/programs/ab.html) is used
+  # for simplicity's sake, and it will report the number of successful requests,
+  # as well as the number of non-2xx requests, which is what we are trying to
+  # keep to zero.
+  ab:
+    image: httpd
+    depends_on:
+      - proxy
+    # Use a long timeout for ab so that it doesn't die
+    # when the connection to the backend dies.  We want
+    # it to run to for 120s with whatever number of
+    # requests, thus -n10000000.
+    command: |
+      ab -s600 -t120 -n10000000 -c1 http://proxy/
