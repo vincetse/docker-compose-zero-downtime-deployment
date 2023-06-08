@@ -1,6 +1,6 @@
 version: "3.7"
 x-base-service: &default-app
-  image: node:14-alpine
+  image: node:20-alpine
   restart: always
   ports:
     - "3000"
@@ -16,7 +16,7 @@ services:
   #
   # http://jasonwilder.com/blog/2014/03/25/automated-nginx-reverse-proxy-for-docker/
   proxy:
-    image: jwilder/nginx-proxy:0.4.0
+    image: jwilder/nginx-proxy:1.3-alpine
     restart: always
     ports:
       - "8000:80"
